@@ -1,3 +1,5 @@
+import io from 'socket.io-client'
+
 import React, { useContext, useState } from 'react'
 import Compressor from 'compressorjs'
 import { HicetnuncContext } from '../../context/HicetnuncContext'
@@ -19,6 +21,125 @@ import {
   MIN_ROYALTIES,
   MAX_ROYALTIES,
 } from '../../constants'
+
+let sessionId;
+let showEndMenu = false;
+let cSocketId = "";
+let displayForm = true;
+let displayProcessing = false;
+let showDownloadBtn = false;
+
+var socket = io.connect();
+socket.onAny((event, ...args) => {
+  switch (args[0]) {
+    case 'Zip_Ready':
+      displayDownload();
+      break;
+    case 'Done':
+      showEndMenu = true;
+      break;
+    default:
+      sessionId = args[0];
+      cSocketId = sessionId;
+  }
+});
+
+/// submit files
+function submitForm(e) {
+  e.preventDefault();
+  displayForm = false;
+  displayProcessing = true;
+  const cover = document.getElementById("cover");
+  const music = document.getElementById("music");
+
+  const formData = new FormData();
+  formData.append("cover", cover.files[0], 'cover.jpg');
+  formData.append("music", music.files[0], 'music.mp3');
+  fetch("localhost:30001/upload", {
+    method: 'post',
+    body: formData,
+    headers: {
+      'SocketId': sessionId
+    },
+  })
+    .catch((err) => ("Error occured", err));
+}
+
+//display download btn
+function displayDownload() {
+  showDownloadBtn = true;
+  displayProcessing = false;
+}
+
+//download zip
+const DownloadBnt = () => {
+  if (!showDownloadBtn) return null;
+  <button id="downloadBtn" class="submit-btn" onClick='download'>Download</button>
+}
+function download() {
+  showDownloadBtn = false;
+
+  const options = {
+    method: 'get',
+    headers: {
+      'SocketId': sessionId,
+      'Content-Type': 'application/zip'
+    }
+  };
+  fetch("localhost:3001/download", options)
+    .then(res => res.blob())
+    .then(zip => {
+      let file = new File([zip], 'fileName', { type: "application/zip" });
+      let exportUrl = URL.createObjectURL(file);
+
+      window.location.assign(exportUrl);
+      URL.revokeObjectURL(exportUrl);
+    });
+
+}
+
+//reflesh page for new zip
+
+function refleshPage() {
+  window.location.reload();
+
+}
+
+const InputFields = () => {
+  if (!displayForm) return null;
+    return(<form id='form' onClick="submitForm()">
+<div class="input-group">
+  <label for='files'>Select your cover image (jpeg)</label>
+  <input id='cover' name="cover" type="file" />
+</div>
+<div class="input-group">
+  <label for='files'>Select your mp3 music file</label>
+  <input id='music' name="music" type="file" />
+</div>
+<input id='socketId' name="socketId" type="text" value={cSocketId}/>
+<button class="submit-btn" type='submit'>Upload</button>
+</form>)
+}
+
+const Processing = () => {
+  if (!displayProcessing) return null;
+  <div id='processing'>processing</div>
+}
+
+const AfterZip = () => {
+  if (!showEndMenu) return null;
+  return (
+  < div id = 'menu' >
+          <form action="https://www.hicetnunc.xyz/">
+              <input type="submit" value="Go to HEN" />
+          </form>
+          <button id="zipAgainBtn" class="submit-btn" onClick="refleshPage()">Zip another</button>
+      </div >);
+
+  }
+
+///////////////////////////////////////////////////
+
 
 const coverOptions = {
   quality: 0.85,
@@ -248,6 +369,8 @@ export const Mint = () => {
     return true
   }
 
+
+
   return (
     <Page title="mint" large>
       {step === 0 && (
@@ -264,7 +387,7 @@ export const Mint = () => {
 
               <Input
                 type="text"
-                style={{ whiteSpace : 'pre' }}
+                style={{ whiteSpace: 'pre' }}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="description"
                 label="description"
@@ -385,6 +508,13 @@ export const Mint = () => {
           </Container>
         </>
       )}
+      <div class="container">
+        <h1>Hen.Radio template builder</h1>
+        <InputFields></InputFields>
+        <Processing></Processing>
+        {showDownloadBtn ? <DownloadBnt/> : null}
+        {showEndMenu ? <AfterZip /> : null}
+      </div>
     </Page>
   )
 }
