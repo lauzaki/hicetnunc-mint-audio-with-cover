@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react'
-import io from 'socket.io-client'
+import socketClient from 'socket.io-client'
 import Compressor from 'compressorjs'
 import { HicetnuncContext } from '../../context/HicetnuncContext'
 import { Page, Container, Padding } from '../../components/layout'
@@ -58,39 +58,69 @@ export const Mint = () => {
   const [needsCover, setNeedsCover] = useState(false)
 
 
-  //////////////////////////////////
+  ////////////////////////////////////////////////////
 
-  let sessionId;
+  const [musicTitle, setMusicTitle] = useState('');
+  const [musicCover, setMusicCover] = useState('');
+  const [music, setMusic] = useState('');
+  const [socketId, setSocket] = useState('');
+  
+
+  let sessionId ="000";
   let showEndMenu = false;
-  let cSocketId = "";
   let displayForm = true;
   let displayProcessing = false;
   let showDownloadBtn = false;
+  const socket = socketClient("http://127.0.0.1:3002");
 
+  
   //display download btn
   function displayDownload() {
     showDownloadBtn = true;
     displayProcessing = false;
   }
 
-  var socket = io.connect();
+  //useEffect(() => {
+    
+    socket.onAny((event, ...args) => {
+      console.log(args[0]);
+      switch (args[0]) {
+        case 'Zip_Ready':
+          console.log('1');
+          displayDownload();
+          break;
+        case 'Done':
+          console.log('2');
+          showEndMenu = true;
+          break;
+        default:
+          sessionId = args[0];
+          console.log('sessionId '+ sessionId);      
+      }
+    });
+  //}, []);
+
+/*
   socket.onAny((event, ...args) => {
     switch (args[0]) {
       case 'Zip_Ready':
+        console.log('1');
         displayDownload();
         break;
       case 'Done':
+        console.log('2');
         showEndMenu = true;
         break;
       default:
+        console.log('3====');
         sessionId = args[0];
-        cSocketId = sessionId;
     }
   });
-
+*/
   //download zip
   const DownloadBnt = () => {
     if (!showDownloadBtn) return null;
+    console.log("showBtn");
     <button id="downloadBtn" className="submit-btn" onClick={Download}>Download</button>
   }
 
@@ -105,8 +135,8 @@ export const Mint = () => {
       }
     };
 
-    useEffect(() => {
-      fetch("localhost:3001/download", options)
+    //useEffect(() => {
+      fetch("http://localhost:3002/download", options)
         .then(res => res.blob())
         .then(zip => {
           let file = new File([zip], 'fileName', { type: "application/zip" });
@@ -116,75 +146,54 @@ export const Mint = () => {
           URL.revokeObjectURL(exportUrl);
         });
 
-    });
-  }
-  //reflesh page for new zip
-
-  function refleshPage() {
-    window.location.reload();
+   // });
   }
 
-  const FileUploader = ({ onFileSelect }) => {
-    console.log(onFileSelect);
-    const fileInput = React.useRef(null);
 
-    const handleFileInput = (e) => {
-      console.log("here");
-      console.log(e);
-
-      // handle validations
-      //onFileSelect(e.target.files[0])
+  const handleChange = (event) => {
+    const target = event.target;
+    const value = target.type === 'file' ? target.files[0] : target.value;
+    const name = target.name;
+    switch (name){
+      case 'musicTitle':
+        setMusicTitle(value);
+        console.log('title');
+        break;
+      case 'musicCover':
+        setMusicCover(value);
+        console.log('cover');
+        break;
+      case 'music':
+        setMusic(value);
+        console.log('music');
+        break;
     }
+    console.log("change");
+}
 
-    return (
-      <div className="file-uploader">
-        <input type="file" onChange={handleFileInput} />
-        <button onClick={e => fileInput.current && fileInput.current.click()} className="btn btn-primary" />
-      </div>
-    )
+  const handleSubmit = (event) => {
+     console.log(">>> >>> "+sessionId);
+    event.preventDefault();
+    const formData = new FormData();
+    formData.append("cover", musicCover, 'cover.jpg');
+    formData.append("music", music, 'music.mp3');
+    formData.append("socketid", sessionId);
+
+    fetch("http://localhost:3002/upload", {
+        method: 'post',
+        body: formData,
+        headers: {
+           'SocketId': sessionId
+          }
+    })
+        .catch((err) => ("Error occured", err));
   }
 
-  const InputFields = () => {
-    
-    const [selectedImg, setSelectedImg] = useState(null);
-    const [selectedMusic, setSelectedMusic] = useState(null);
-    /// submit files
-    const SubmitForm = (e) => {
-      e.preventDefault();
-      displayForm = false;
-      displayProcessing = true;
+    //reflesh page for new zip
 
-
-      const formData = new FormData();
-      formData.append("cover", selectedImg, 'cover.jpg');
-      formData.append("music", selectedMusic, 'music.mp3');
-      useEffect(() => {
-        fetch("localhost:30001/upload", {
-          method: 'post',
-          body: formData,
-          headers: {
-            'SocketId': sessionId
-          },
-        })
-          .catch((err) => ("Error occured", err));
-      });
+    function refleshPage() {
+      window.location.reload();
     }
-    if (!displayForm) return null;
-    return (<form id='form'>
-      
-      <FileUploader
-        onFileSelectSuccess={(file) => setSelectedImg(file)}
-        onFileSelectError={({ error }) => alert(error)}
-      />
-        <FileUploader
-        onFileSelectSuccess={(file) => setSelectedMusic(file)}
-        onFileSelectError={({ error }) => alert(error)}
-      />
-      <input id='socketId' name="socketId" type="text" defaultValue={cSocketId} />
-      <button className="submit-btn" onClick={SubmitForm}>Upload</button>
-    </form>)
-  }
-
 
   const Processing = () => {
     if (!displayProcessing) return null;
@@ -544,9 +553,26 @@ export const Mint = () => {
       )}
       <div className="container">
         <h1>Hen.Radio template builderI</h1>
-        <InputFields></InputFields>
+        <form onSubmit={handleSubmit}>
+          <label>
+            Name2:
+            <input name="musicTitle" type="text" onChange={handleChange} />
+          </label>
+          <label>
+            Image:
+            <input name="musicCover" type="file" onChange={handleChange} />
+          </label>
+          <label>
+            Music:
+            <input name="music" type="file" onChange={handleChange} />
+          </label>
+          <input type="submit" value="Submit" />
+          <p>{sessionId}</p>
+      
+        </form>
+        
         <Processing></Processing>
-        {showDownloadBtn ? <DownloadBnt /> : null}
+        <button id="downloadBtn" className="submit-btn" onClick={Download}>Download</button>
         {showEndMenu ? <AfterZip /> : null}
       </div>
     </Page>
