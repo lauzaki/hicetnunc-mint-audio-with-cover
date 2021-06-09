@@ -330,6 +330,8 @@ const template =
         }
 
         const getTimes = (startTime, endTime) =>
+            \`\${startTime.getHours()}:\${padTime(startTime.getMinutes())}—\` +
+            \`\${endTime.getHours()}:\${padTime(endTime.getMinutes())}\`
 
         const initAudioContext = () => {
             if (!audioContext) {

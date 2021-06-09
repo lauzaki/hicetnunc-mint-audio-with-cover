@@ -22,9 +22,8 @@ import {
 import { on } from 'local-storage'
 
 //for template
-import socketClient from 'socket.io-client'
 import JSZip from 'jszip';
-import { saveAs } from 'file-saver';
+//import { saveAs } from 'file-saver';
 import mintTemplate from './template';
 
 
@@ -66,139 +65,35 @@ export const Mint = () => {
 
   ////////////////////////////////////////////////////
 
-  const [musicTitle, setMusicTitle] = useState('');
   const [musicCover, setMusicCover] = useState('');
   const [music, setMusic] = useState('');
-  const [socketId, setSocket] = useState('');
-
-
-  let sessionId = "000";
-  let showEndMenu = false;
-  let displayForm = true;
-  let displayProcessing = false;
-  let showDownloadBtn = false;
-  const socket = socketClient("http://127.0.0.1:3002");
-
-
-  //display download btn
-  function displayDownload() {
-    showDownloadBtn = true;
-    displayProcessing = false;
-  }
-
-  socket.onAny((event, ...args) => {
-    console.log(args[0]);
-    switch (args[0]) {
-      case 'Zip_Ready':
-        console.log('1');
-        displayDownload();
-        break;
-      case 'Done':
-        console.log('2');
-        showEndMenu = true;
-        break;
-      default:
-        sessionId = args[0];
-        console.log('sessionId ' + sessionId);
-    }
-  });
-
-  //download zip
-  const DownloadBnt = () => {
-    if (!showDownloadBtn) return null;
-    console.log("showBtn");
-    <button id="downloadBtn" className="submit-btn" onClick={Download}>Download</button>
-  }
-
-  const Download = () => {
-    showDownloadBtn = false;
-
-    const options = {
-      method: 'get',
-      headers: {
-        'SocketId': sessionId,
-        'Content-Type': 'application/zip'
-      }
-    };
-
-    fetch("http://localhost:3002/download", options)
-      .then(res => res.blob())
-      .then(zip => {
-        let file = new File([zip], 'fileName', { type: "application/zip" });
-        let exportUrl = URL.createObjectURL(file);
-        handleFileUpload();
-        window.location.assign(exportUrl);
-        URL.revokeObjectURL(exportUrl);
-      });
-  }
-
 
   const handleChange = (event) => {
     const target = event.target;
     const value = target.type === 'file' ? target.files[0] : target.value;
     const name = target.name;
-    switch (name) {
-      case 'musicTitle':
-        setMusicTitle(value);
-        console.log('title');
-        break;
-      case 'musicCover':
-        console.log(value);
-        setMusicCover(value);
-
-        //handleCoverUpload(musicCover);
-        console.log(typeof value);
-        break;
-      case 'music':
-        setMusic(value);
-        console.log('music');
-        break;
-    }
-    console.log("change");
+    setMusic(value);
   }
   //  const handleFileUpload = async (props) => {
   // setFile(props)
   const handleSubmit = (event) => {
-    console.log(">>> >>> " + sessionId);
     event.preventDefault();
-    const formData = new FormData();
-    console.log(musicCover);
-    console.log(typeof musicCover);
-    console.log(music);
 
     var zip = new JSZip();
     zip.file("cover.jpg", musicCover);
     zip.file("music.mp3", music);
-    zip.file("index.hml", mintTemplate);
-    
+    zip.file("index.html", mintTemplate);
+
     zip.generateAsync({ type: "blob" })
-      .then(function (content) {
+      .then(async (content) => {
         // see FileSaver.js
-        saveAs(content, "example.zip");
+        //saveAs(content, "example.zip");
+        const mimeType = "application/zip";
+        const buffer = await content.arrayBuffer();
+        const reader = await blobToDataURL(content);
+        setFile({ mimeType, buffer, reader })
+
       });
-
-  }
-
-  //reflesh page for new zip
-
-  function refleshPage() {
-    window.location.reload();
-  }
-
-  const Processing = () => {
-    if (!displayProcessing) return null;
-    <div id='processing'>processing</div>
-  }
-
-  const AfterZip = () => {
-    if (!showEndMenu) return null;
-    return (
-      < div id='menu' >
-        <form action="https://www.hicetnunc.xyz/">
-          <input type="submit" value="Go to HEN" />
-        </form>
-        <button id="zipAgainBtn" className="submit-btn" onClick={refleshPage()}>Zip another</button>
-      </div >);
 
   }
 
@@ -221,7 +116,8 @@ export const Mint = () => {
       })
     } else {
       await setAccount()
-
+      console.log('=======')
+      console.log(file)
       // check mime type
       if (ALLOWED_MIMETYPES.indexOf(file.mimeType) === -1) {
         // alert(
@@ -496,20 +392,10 @@ export const Mint = () => {
             </Container>
           )}
 
-          <Container>
-            <Padding>
-              <Button onClick={handlePreview} fit disabled={handleValidation()}>
-                <Curate>Preview</Curate>
-              </Button>
-            </Padding>
-          </Container>
+
           <Container>
             <h1>Hen.Radio template builder</h1>
             <form onSubmit={handleSubmit}>
-              <label>
-                Name2:
-            <input name="musicTitle" type="text" onChange={handleChange} />
-              </label>
               <Upload
                 label="Upload cover image"
                 allowedTypes={ALLOWED_COVER_MIMETYPES}
@@ -522,13 +408,15 @@ export const Mint = () => {
             <input name="music" type="file" onChange={handleChange} />
               </label>
               <input type="submit" value="Submit" />
-              <p>{sessionId}</p>
 
             </form>
-
-            <Processing></Processing>
-            <button id="downloadBtn" className="submit-btn" onClick={Download}>Download</button>
-            {showEndMenu ? <AfterZip /> : null}
+          </Container>
+          <Container>
+            <Padding>
+              <Button onClick={handlePreview} fit disabled={handleValidation()}>
+                <Curate>Preview</Curate>
+              </Button>
+            </Padding>
           </Container>
         </>
       )}
