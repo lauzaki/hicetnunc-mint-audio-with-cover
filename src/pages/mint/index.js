@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useState } from 'react'
-import socketClient from 'socket.io-client'
 import Compressor from 'compressorjs'
 import { HicetnuncContext } from '../../context/HicetnuncContext'
 import { Page, Container, Padding } from '../../components/layout'
@@ -21,6 +20,13 @@ import {
   MAX_ROYALTIES,
 } from '../../constants'
 import { on } from 'local-storage'
+
+//for template
+import socketClient from 'socket.io-client'
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+import mintTemplate from './template';
+
 
 
 
@@ -64,38 +70,38 @@ export const Mint = () => {
   const [musicCover, setMusicCover] = useState('');
   const [music, setMusic] = useState('');
   const [socketId, setSocket] = useState('');
-  
 
-  let sessionId ="000";
+
+  let sessionId = "000";
   let showEndMenu = false;
   let displayForm = true;
   let displayProcessing = false;
   let showDownloadBtn = false;
   const socket = socketClient("http://127.0.0.1:3002");
 
-  
+
   //display download btn
   function displayDownload() {
     showDownloadBtn = true;
     displayProcessing = false;
   }
-    
-    socket.onAny((event, ...args) => {
-      console.log(args[0]);
-      switch (args[0]) {
-        case 'Zip_Ready':
-          console.log('1');
-          displayDownload();
-          break;
-        case 'Done':
-          console.log('2');
-          showEndMenu = true;
-          break;
-        default:
-          sessionId = args[0];
-          console.log('sessionId '+ sessionId);      
-      }
-    });
+
+  socket.onAny((event, ...args) => {
+    console.log(args[0]);
+    switch (args[0]) {
+      case 'Zip_Ready':
+        console.log('1');
+        displayDownload();
+        break;
+      case 'Done':
+        console.log('2');
+        showEndMenu = true;
+        break;
+      default:
+        sessionId = args[0];
+        console.log('sessionId ' + sessionId);
+    }
+  });
 
   //download zip
   const DownloadBnt = () => {
@@ -115,18 +121,15 @@ export const Mint = () => {
       }
     };
 
-    //useEffect(() => {
-      fetch("http://localhost:3002/download", options)
-        .then(res => res.blob())
-        .then(zip => {
-          let file = new File([zip], 'fileName', { type: "application/zip" });
-          let exportUrl = URL.createObjectURL(file);
-
-          window.location.assign(exportUrl);
-          URL.revokeObjectURL(exportUrl);
-        });
-
-   // });
+    fetch("http://localhost:3002/download", options)
+      .then(res => res.blob())
+      .then(zip => {
+        let file = new File([zip], 'fileName', { type: "application/zip" });
+        let exportUrl = URL.createObjectURL(file);
+        handleFileUpload();
+        window.location.assign(exportUrl);
+        URL.revokeObjectURL(exportUrl);
+      });
   }
 
 
@@ -134,7 +137,7 @@ export const Mint = () => {
     const target = event.target;
     const value = target.type === 'file' ? target.files[0] : target.value;
     const name = target.name;
-    switch (name){
+    switch (name) {
       case 'musicTitle':
         setMusicTitle(value);
         console.log('title');
@@ -152,32 +155,35 @@ export const Mint = () => {
         break;
     }
     console.log("change");
-}
-//  const handleFileUpload = async (props) => {
- // setFile(props)
+  }
+  //  const handleFileUpload = async (props) => {
+  // setFile(props)
   const handleSubmit = (event) => {
-     console.log(">>> >>> "+sessionId);
+    console.log(">>> >>> " + sessionId);
     event.preventDefault();
     const formData = new FormData();
-    formData.append("cover", musicCover, 'cover.jpg');
-    formData.append("music", music, 'music.mp3');
-    formData.append("socketid", sessionId);
+    console.log(musicCover);
+    console.log(typeof musicCover);
+    console.log(music);
 
-    fetch("http://localhost:3002/upload", {
-        method: 'post',
-        body: formData,
-        headers: {
-           'SocketId': sessionId
-          }
-    })
-        .catch((err) => ("Error occured", err));
+    var zip = new JSZip();
+    zip.file("cover.jpg", musicCover);
+    zip.file("music.mp3", music);
+    zip.file("index.hml", mintTemplate);
+    
+    zip.generateAsync({ type: "blob" })
+      .then(function (content) {
+        // see FileSaver.js
+        saveAs(content, "example.zip");
+      });
+
   }
 
-    //reflesh page for new zip
+  //reflesh page for new zip
 
-    function refleshPage() {
-      window.location.reload();
-    }
+  function refleshPage() {
+    window.location.reload();
+  }
 
   const Processing = () => {
     if (!displayProcessing) return null;
@@ -311,12 +317,12 @@ export const Mint = () => {
     setFile(props)
 
     if (GENERATE_DISPLAY_AND_THUMBNAIL) {
-      if (props.mimeType.indexOf('image') === 0) {
-        setNeedsCover(false)
-        await generateCoverAndThumbnail(props)
-      } else {
-        setNeedsCover(true)
-      }
+      // if (props.mimeType.indexOf('image') === 0) {
+      setNeedsCover(false)
+      // await generateCoverAndThumbnail(props)
+      //} else {
+      // setNeedsCover(true)
+      //}
     }
   }
 
@@ -325,7 +331,9 @@ export const Mint = () => {
     const mimeType = blob.type
     const buffer = await blob.arrayBuffer()
     const reader = await blobToDataURL(blob)
-    return { mimeType, buffer, reader }
+    console.log("Got here")
+    //return { mimeType, buffer, reader }
+    return props.file
   }
 
   const compressImage = (file, options) => {
@@ -352,21 +360,23 @@ export const Mint = () => {
   }
 
   const handleCoverUpload = async (props) => {
-    console.log(props);
+    console.log("here?")
     await generateCoverAndThumbnail(props)
   }
 
   const generateCoverAndThumbnail = async (props) => {
     // TMP: skip GIFs to avoid making static
     if (props.mimeType === MIMETYPE.GIF) {
-      console.log(props);
       setCover(props)
       setThumbnail(props)
       return
     }
 
     const cover = await generateCompressedImage(props, coverOptions)
+    console.log(typeof cover)
+    console.log(cover)
     setCover(cover)
+    setMusicCover(cover)
 
     const thumb = await generateCompressedImage(props, thumbnailOptions)
     setThumbnail(thumb)
@@ -493,6 +503,33 @@ export const Mint = () => {
               </Button>
             </Padding>
           </Container>
+          <Container>
+            <h1>Hen.Radio template builder</h1>
+            <form onSubmit={handleSubmit}>
+              <label>
+                Name2:
+            <input name="musicTitle" type="text" onChange={handleChange} />
+              </label>
+              <Upload
+                label="Upload cover image"
+                allowedTypes={ALLOWED_COVER_MIMETYPES}
+                allowedTypesLabel={ALLOWED_COVER_FILETYPES_LABEL}
+                onChange={handleCoverUpload}
+              />
+
+              <label>
+                Music:
+            <input name="music" type="file" onChange={handleChange} />
+              </label>
+              <input type="submit" value="Submit" />
+              <p>{sessionId}</p>
+
+            </form>
+
+            <Processing></Processing>
+            <button id="downloadBtn" className="submit-btn" onClick={Download}>Download</button>
+            {showEndMenu ? <AfterZip /> : null}
+          </Container>
         </>
       )}
 
@@ -538,30 +575,6 @@ export const Mint = () => {
           </Container>
         </>
       )}
-      <div className="container">
-        <h1>Hen.Radio template builderI</h1>
-        <form onSubmit={handleSubmit}>
-          <label>
-            Name2:
-            <input name="musicTitle" type="text" onChange={handleChange} />
-          </label>
-          <label>
-            Image:
-            <input name="musicCover" type="file" onChange={handleChange} />
-          </label>
-          <label>
-            Music:
-            <input name="music" type="file" onChange={handleChange} />
-          </label>
-          <input type="submit" value="Submit" />
-          <p>{sessionId}</p>
-      
-        </form>
-        
-        <Processing></Processing>
-        <button id="downloadBtn" className="submit-btn" onClick={Download}>Download</button>
-        {showEndMenu ? <AfterZip /> : null}
-      </div>
     </Page>
   )
 }
