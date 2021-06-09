@@ -79,8 +79,6 @@ export const Mint = () => {
     showDownloadBtn = true;
     displayProcessing = false;
   }
-
-  //useEffect(() => {
     
     socket.onAny((event, ...args) => {
       console.log(args[0]);
@@ -98,25 +96,7 @@ export const Mint = () => {
           console.log('sessionId '+ sessionId);      
       }
     });
-  //}, []);
 
-/*
-  socket.onAny((event, ...args) => {
-    switch (args[0]) {
-      case 'Zip_Ready':
-        console.log('1');
-        displayDownload();
-        break;
-      case 'Done':
-        console.log('2');
-        showEndMenu = true;
-        break;
-      default:
-        console.log('3====');
-        sessionId = args[0];
-    }
-  });
-*/
   //download zip
   const DownloadBnt = () => {
     if (!showDownloadBtn) return null;
@@ -160,8 +140,11 @@ export const Mint = () => {
         console.log('title');
         break;
       case 'musicCover':
+        console.log(value);
         setMusicCover(value);
-        console.log('cover');
+
+        //handleCoverUpload(musicCover);
+        console.log(typeof value);
         break;
       case 'music':
         setMusic(value);
@@ -170,7 +153,8 @@ export const Mint = () => {
     }
     console.log("change");
 }
-
+//  const handleFileUpload = async (props) => {
+ // setFile(props)
   const handleSubmit = (event) => {
      console.log(">>> >>> "+sessionId);
     event.preventDefault();
@@ -323,6 +307,7 @@ export const Mint = () => {
   }
 
   const handleFileUpload = async (props) => {
+    console.log(props);
     setFile(props)
 
     if (GENERATE_DISPLAY_AND_THUMBNAIL) {
@@ -367,12 +352,14 @@ export const Mint = () => {
   }
 
   const handleCoverUpload = async (props) => {
+    console.log(props);
     await generateCoverAndThumbnail(props)
   }
 
   const generateCoverAndThumbnail = async (props) => {
     // TMP: skip GIFs to avoid making static
     if (props.mimeType === MIMETYPE.GIF) {
+      console.log(props);
       setCover(props)
       setThumbnail(props)
       return
