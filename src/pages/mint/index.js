@@ -23,7 +23,9 @@ import { on } from 'local-storage'
 
 //for template
 import JSZip from 'jszip';
-//import { saveAs } from 'file-saver';
+import * as fflate from 'fflate';
+import { gzipSync } from 'fflate';
+import { saveAs } from 'file-saver';
 import mintTemplate from './template';
 
 
@@ -77,8 +79,8 @@ export const Mint = () => {
   //  const handleFileUpload = async (props) => {
   // setFile(props)
   const handleSubmit = (event) => {
-    event.preventDefault();
-
+       event.preventDefault();
+    
     var zip = new JSZip();
     zip.file("cover.jpg", musicCover);
     zip.file("music.mp3", music);
@@ -91,11 +93,11 @@ export const Mint = () => {
         const mimeType = "application/zip";
         const buffer = await content.arrayBuffer();
         const reader = await blobToDataURL(content);
-        setFile({ mimeType, buffer, reader })
+        
+        setFile({ mimeType, buffer, reader , content})
 
       });
-
-  }
+}
 
   ///////////////////////////////////
 
@@ -116,8 +118,6 @@ export const Mint = () => {
       })
     } else {
       await setAccount()
-      console.log('=======')
-      console.log(file)
       // check mime type
       if (ALLOWED_MIMETYPES.indexOf(file.mimeType) === -1) {
         // alert(
@@ -138,7 +138,7 @@ export const Mint = () => {
       }
 
       // check file size
-      const filesize = (file.file.size / 1024 / 1024).toFixed(4)
+      const filesize = (file.size / 1024 / 1024).toFixed(4)
       if (filesize > MINT_FILESIZE) {
         // alert(
         //   `File too big (${filesize}). Limit is currently set at ${MINT_FILESIZE}MB`
@@ -173,7 +173,11 @@ export const Mint = () => {
       if (
         [MIMETYPE.ZIP, MIMETYPE.ZIP1, MIMETYPE.ZIP2].includes(file.mimeType)
       ) {
-        const files = await prepareFilesFromZIP(file.buffer)
+        console.log(file);
+        console.log("prepare number 2")
+        console.log(file.buffer)
+        let uint8View = new Uint8Array(file.buffer);
+        const files = await prepareFilesFromZIP(uint8View)
 
         nftCid = await prepareDirectory({
           name: title,
@@ -227,7 +231,6 @@ export const Mint = () => {
     const mimeType = blob.type
     const buffer = await blob.arrayBuffer()
     const reader = await blobToDataURL(blob)
-    console.log("Got here")
     //return { mimeType, buffer, reader }
     return props.file
   }
@@ -256,7 +259,6 @@ export const Mint = () => {
   }
 
   const handleCoverUpload = async (props) => {
-    console.log("here?")
     await generateCoverAndThumbnail(props)
   }
 
@@ -269,8 +271,6 @@ export const Mint = () => {
     }
 
     const cover = await generateCompressedImage(props, coverOptions)
-    console.log(typeof cover)
-    console.log(cover)
     setCover(cover)
     setMusicCover(cover)
 
@@ -369,16 +369,6 @@ export const Mint = () => {
             </Padding>
           </Container>
 
-          <Container>
-            <Padding>
-              <Upload
-                label="Upload OBJKT"
-                allowedTypesLabel={ALLOWED_FILETYPES_LABEL}
-                onChange={handleFileUpload}
-              />
-            </Padding>
-          </Container>
-
           {file && needsCover && (
             <Container>
               <Padding>
@@ -404,7 +394,7 @@ export const Mint = () => {
               />
 
               <label>
-                Music:
+                Music (tested on with mp3):
             <input name="music" type="file" onChange={handleChange} />
               </label>
               <input type="submit" value="Submit" />

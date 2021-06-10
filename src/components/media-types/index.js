@@ -22,6 +22,7 @@ function getInfuraUrl(hash) {
 }
 
 export const renderMediaType = (props) => {
+
   const {
     mimeType,
     uri,
@@ -30,6 +31,7 @@ export const renderMediaType = (props) => {
     metadata,
   } = props
   const path = uri
+  console.log(preview)
   let url = preview ? uri : `${CLOUDFLARE}${path}`
 
   switch (mimeType) {

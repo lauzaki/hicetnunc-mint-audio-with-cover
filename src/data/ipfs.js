@@ -77,7 +77,8 @@ export const prepareDirectory = async ({
 
   let displayUri = ''
   if (generateDisplayUri) {
-    const coverInfo = await ipfs.add(cover.buffer)
+    console.log(cover)
+    const coverInfo = await ipfs.add(cover)
     const coverHash = coverInfo.path
     displayUri = `ipfs://${coverHash}`
   } else if (hashes.cover) {
@@ -88,11 +89,21 @@ export const prepareDirectory = async ({
   // upload thumbnail image
   let thumbnailUri = IPFS_DISPLAY_URI_BLACKCIRCLE
   if (generateDisplayUri) {
-    const thumbnailInfo = await ipfs.add(thumbnail.buffer)
+    console.log(thumbnail)
+    const thumbnailInfo = await ipfs.add(thumbnail)
     const thumbnailHash = thumbnailInfo.path
     thumbnailUri = `ipfs://${thumbnailHash}`
   }
-
+console.log({
+  name,
+  description,
+  tags,
+  cid,
+  address,
+  mimeType: IPFS_DIRECTORY_MIMETYPE,
+  displayUri,
+  thumbnailUri,
+})
   return await uploadMetadataFile({
     name,
     description,
@@ -110,6 +121,7 @@ function not_directory(file) {
 }
 
 async function uploadFilesToDirectory(files) {
+  console.log("Upload file to directory")
   files = files.filter(not_directory)
 
   const form = new FormData()

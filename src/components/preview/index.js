@@ -17,7 +17,6 @@ export const Preview = ({ title, description, mimeType, uri, tags }) => {
   const t = tags !== '' ? tags.replace(/\s/g, '').split(',') : []
   return (
     <div className={styles.container}>
-      {isHTML(mimeType) && <HTMLWarning />}
       <div className={styles.media}>
         {renderMediaType({
           mimeType,
