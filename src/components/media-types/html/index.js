@@ -44,8 +44,6 @@ export const HTMLComponent = ({
     unpacking.current = true
 
     const buffer = dataRUIToBuffer(src)
-    console.log("prepare here 1")
-    console.log(buffer)
     const filesArr = await prepareFilesFromZIP(buffer)
     const files = {}
     filesArr.forEach((f) => {

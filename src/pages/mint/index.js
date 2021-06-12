@@ -13,6 +13,8 @@ import {
   ALLOWED_FILETYPES_LABEL,
   ALLOWED_COVER_MIMETYPES,
   ALLOWED_COVER_FILETYPES_LABEL,
+  ALLOWED_AUDIO_MIMETYPES,
+  ALLOWED_AUDIO_FILETYPES_LABEL,
   MINT_FILESIZE,
   MIMETYPE,
   MAX_EDITIONS,
@@ -23,10 +25,9 @@ import { on } from 'local-storage'
 
 //for template
 import JSZip from 'jszip';
-import * as fflate from 'fflate';
-import { gzipSync } from 'fflate';
-import { saveAs } from 'file-saver';
 import mintTemplate from './template';
+import { compressSync } from 'fflate'
+import { saveAs } from 'file-saver';
 
 
 
@@ -62,42 +63,12 @@ export const Mint = () => {
   const [file, setFile] = useState() // the uploaded file
   const [cover, setCover] = useState() // the uploaded or generated cover image
   const [thumbnail, setThumbnail] = useState() // the uploaded or generated cover image
-  const [needsCover, setNeedsCover] = useState(false)
 
 
   ////////////////////////////////////////////////////
 
   const [musicCover, setMusicCover] = useState('');
-  const [music, setMusic] = useState('');
-
-  const handleChange = (event) => {
-    const target = event.target;
-    const value = target.type === 'file' ? target.files[0] : target.value;
-    const name = target.name;
-    setMusic(value);
-  }
-  //  const handleFileUpload = async (props) => {
-  // setFile(props)
-  const handleSubmit = (event) => {
-       event.preventDefault();
-    
-    var zip = new JSZip();
-    zip.file("cover.jpg", musicCover);
-    zip.file("music.mp3", music);
-    zip.file("index.html", mintTemplate);
-
-    zip.generateAsync({ type: "blob" })
-      .then(async (content) => {
-        // see FileSaver.js
-        //saveAs(content, "example.zip");
-        const mimeType = "application/zip";
-        const buffer = await content.arrayBuffer();
-        const reader = await blobToDataURL(content);
-        
-        setFile({ mimeType, buffer, reader , content})
-
-      });
-}
+  const [audioFile, setAudioFile] = useState('');
 
   ///////////////////////////////////
 
@@ -208,22 +179,30 @@ export const Mint = () => {
     }
   }
 
-  const handlePreview = () => {
-    setStep(1)
+  const zipAndSetFile = () => {
+    var zip = new JSZip();
+    zip.file("cover.jpg", musicCover);
+    zip.file("music.mp3", audioFile);
+    zip.file("index.html", mintTemplate);
+
+    zip.generateAsync({ type: "blob" })
+      .then(async (content) => {
+        // see FileSaver.js
+        //saveAs(content, "example.zip");
+        const mimeType = "application/zip";
+        const buffer = await content.arrayBuffer();
+        const reader = await blobToDataURL(content);
+        saveAs(content, "example.zip");
+        setFile({ mimeType, buffer, reader, content })
+
+      });
+
+
   }
 
-  const handleFileUpload = async (props) => {
-    console.log(props);
-    setFile(props)
+  const handlePreview = () => {
 
-    if (GENERATE_DISPLAY_AND_THUMBNAIL) {
-      // if (props.mimeType.indexOf('image') === 0) {
-      setNeedsCover(false)
-      // await generateCoverAndThumbnail(props)
-      //} else {
-      // setNeedsCover(true)
-      //}
-    }
+    setStep(1)
   }
 
   const generateCompressedImage = async (props, options) => {
@@ -231,7 +210,6 @@ export const Mint = () => {
     const mimeType = blob.type
     const buffer = await blob.arrayBuffer()
     const reader = await blobToDataURL(blob)
-    //return { mimeType, buffer, reader }
     return props.file
   }
 
@@ -258,6 +236,19 @@ export const Mint = () => {
     })
   }
 
+  const handleAudioUpload = (props) => {
+    setAudioFile(props.file);
+  }
+
+  useEffect(() => {
+    if (musicCover && audioFile) { zipAndSetFile(); }
+  },[musicCover, audioFile]);
+
+/*
+  const handleCoverUpload = (props) => {
+    handleCoverImage(props)
+
+  }*/
   const handleCoverUpload = async (props) => {
     await generateCoverAndThumbnail(props)
   }
@@ -291,7 +282,7 @@ export const Mint = () => {
       amount > MAX_EDITIONS ||
       royalties < MIN_ROYALTIES ||
       royalties > MAX_ROYALTIES ||
-      !file
+      !audioFile
     ) {
       return true
     }
@@ -369,36 +360,20 @@ export const Mint = () => {
             </Padding>
           </Container>
 
-          {file && needsCover && (
-            <Container>
-              <Padding>
-                <Upload
-                  label="Upload cover image"
-                  allowedTypes={ALLOWED_COVER_MIMETYPES}
-                  allowedTypesLabel={ALLOWED_COVER_FILETYPES_LABEL}
-                  onChange={handleCoverUpload}
-                />
-              </Padding>
-            </Container>
-          )}
-
-
           <Container>
-            <h1>Hen.Radio template builder</h1>
-            <form onSubmit={handleSubmit}>
+            <form>
               <Upload
                 label="Upload cover image"
                 allowedTypes={ALLOWED_COVER_MIMETYPES}
                 allowedTypesLabel={ALLOWED_COVER_FILETYPES_LABEL}
                 onChange={handleCoverUpload}
               />
-
-              <label>
-                Music (tested on with mp3):
-            <input name="music" type="file" onChange={handleChange} />
-              </label>
-              <input type="submit" value="Submit" />
-
+              <Upload
+                label="Upload music file"
+                allowedTypes={ALLOWED_AUDIO_MIMETYPES}
+                allowedTypesLabel={ALLOWED_AUDIO_FILETYPES_LABEL}
+                onChange={handleAudioUpload}
+              />
             </form>
           </Container>
           <Container>

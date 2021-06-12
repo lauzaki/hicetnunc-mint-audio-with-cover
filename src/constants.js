@@ -15,15 +15,8 @@ export const setBanBlockList = (data) => (banBlockList = data)
 export const getBanBlockList = () => banBlockList
 
 export const PATH = {
-  FEED: '/',
-  ISSUER: '/tz',
-  ABOUT: '/about',
-  FAQ: '/faq',
-  SYNC: '/sync',
   MINT: '/mint',
-  OBJKT: '/objkt',
-  GALLERY: '/gallery',
-  TAGS: '/tags',
+
 }
 
 export const MINT_MIN_LIMIT = 1
@@ -60,11 +53,20 @@ export const ALLOWED_MIMETYPES = Object.keys(MIMETYPE)
   .map((k) => MIMETYPE[k])
   .filter((e) => e !== MIMETYPE.GLTF) // disabling GLTF from new updates
 
+  /*
 export const ALLOWED_FILETYPES_LABEL = Object.entries(MIMETYPE)
   .filter((e) => ALLOWED_MIMETYPES.includes(e[1]))
   .filter((e) => !['ZIP1', 'ZIP2'].includes(e[0]))
   .map((e) => (e[0] === 'ZIP' ? 'HTML (ZIP ARCHIVE)' : e[0]))
-  .join(', ')
+  .join(', ')*/
+
+export const ALLOWED_FILETYPES_LABEL = [
+  MIMETYPE.JPEG,
+  MIMETYPE.PNG,
+  MIMETYPE.GIF,
+  MIMETYPE.MP3,
+]
+
 
 export const ALLOWED_COVER_MIMETYPES = [
   MIMETYPE.JPEG,
@@ -72,7 +74,12 @@ export const ALLOWED_COVER_MIMETYPES = [
   MIMETYPE.GIF,
 ]
 
+export const ALLOWED_AUDIO_MIMETYPES = [
+  MIMETYPE.MP3,
+]
+
 export const ALLOWED_COVER_FILETYPES_LABEL = ['jpeg, png, gif']
+export const ALLOWED_AUDIO_FILETYPES_LABEL = ['mp3']
 
 export const MAX_EDITIONS = 10000  // Limited by contract
 
