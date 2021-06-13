@@ -26,11 +26,6 @@ import { on } from 'local-storage'
 //for template
 import JSZip from 'jszip';
 import mintTemplate from './template';
-import { compressSync } from 'fflate'
-import { saveAs } from 'file-saver';
-
-
-
 
 ///////////////////////////////////////////////////
 
@@ -60,14 +55,14 @@ export const Mint = () => {
   const [tags, setTags] = useState('')
   const [amount, setAmount] = useState()
   const [royalties, setRoyalties] = useState()
-  const [file, setFile] = useState() // the uploaded file
-  const [cover, setCover] = useState() // the uploaded or generated cover image
+  const [zipFile, setZipFile] = useState() // the uploaded file
+  const [cover, setCover] = useState() // the uploaded or generated cover image, as it appears in the collection
   const [thumbnail, setThumbnail] = useState() // the uploaded or generated cover image
 
 
   ////////////////////////////////////////////////////
 
-  const [musicCover, setMusicCover] = useState('');
+  const [audioCover, setAudioCover] = useState(''); // the image displayed when we view the objkt
   const [audioFile, setAudioFile] = useState('');
 
   ///////////////////////////////////
@@ -90,7 +85,7 @@ export const Mint = () => {
     } else {
       await setAccount()
       // check mime type
-      if (ALLOWED_MIMETYPES.indexOf(file.mimeType) === -1) {
+      if (ALLOWED_MIMETYPES.indexOf(zipFile.mimeType) === -1) {
         // alert(
         //   `File format invalid. supported formats include: ${ALLOWED_FILETYPES_LABEL.toLocaleLowerCase()}`
         // )
@@ -109,7 +104,7 @@ export const Mint = () => {
       }
 
       // check file size
-      const filesize = (file.size / 1024 / 1024).toFixed(4)
+      const filesize = (zipFile.size / 1024 / 1024).toFixed(4)
       if (filesize > MINT_FILESIZE) {
         // alert(
         //   `File too big (${filesize}). Limit is currently set at ${MINT_FILESIZE}MB`
@@ -142,12 +137,9 @@ export const Mint = () => {
       // upload file(s)
       let nftCid
       if (
-        [MIMETYPE.ZIP, MIMETYPE.ZIP1, MIMETYPE.ZIP2].includes(file.mimeType)
+        [MIMETYPE.ZIP, MIMETYPE.ZIP1, MIMETYPE.ZIP2].includes(zipFile.mimeType)
       ) {
-        console.log(file);
-        console.log("prepare number 2")
-        console.log(file.buffer)
-        let uint8View = new Uint8Array(file.buffer);
+        let uint8View = new Uint8Array(zipFile.buffer);
         const files = await prepareFilesFromZIP(uint8View)
 
         nftCid = await prepareDirectory({
@@ -167,8 +159,8 @@ export const Mint = () => {
           description,
           tags,
           address: acc.address,
-          buffer: file.buffer,
-          mimeType: file.mimeType,
+          buffer: zipFile.buffer,
+          mimeType: zipFile.mimeType,
           cover,
           thumbnail,
           generateDisplayUri: GENERATE_DISPLAY_AND_THUMBNAIL,
@@ -181,20 +173,16 @@ export const Mint = () => {
 
   const zipAndSetFile = () => {
     var zip = new JSZip();
-    zip.file("cover.jpg", musicCover);
+    zip.file("cover.jpg", audioCover);
     zip.file("music.mp3", audioFile);
     zip.file("index.html", mintTemplate);
 
     zip.generateAsync({ type: "blob" })
       .then(async (content) => {
-        // see FileSaver.js
-        //saveAs(content, "example.zip");
         const mimeType = "application/zip";
         const buffer = await content.arrayBuffer();
         const reader = await blobToDataURL(content);
-        saveAs(content, "example.zip");
-        setFile({ mimeType, buffer, reader, content })
-
+        setZipFile({ mimeType, buffer, reader, content })
       });
 
 
@@ -207,10 +195,8 @@ export const Mint = () => {
 
   const generateCompressedImage = async (props, options) => {
     const blob = await compressImage(props.file, options)
-    const mimeType = blob.type
-    const buffer = await blob.arrayBuffer()
-    const reader = await blobToDataURL(blob)
-    return props.file
+    const compressedImg = new File([blob], "cover")
+    return compressedImg
   }
 
   const compressImage = (file, options) => {
@@ -241,14 +227,9 @@ export const Mint = () => {
   }
 
   useEffect(() => {
-    if (musicCover && audioFile) { zipAndSetFile(); }
-  },[musicCover, audioFile]);
+    if (audioCover && audioFile) { zipAndSetFile(); }
+  },[audioCover, audioFile]);
 
-/*
-  const handleCoverUpload = (props) => {
-    handleCoverImage(props)
-
-  }*/
   const handleCoverUpload = async (props) => {
     await generateCoverAndThumbnail(props)
   }
@@ -258,12 +239,13 @@ export const Mint = () => {
     if (props.mimeType === MIMETYPE.GIF) {
       setCover(props)
       setThumbnail(props)
+      setAudioCover(props)
       return
     }
 
     const cover = await generateCompressedImage(props, coverOptions)
     setCover(cover)
-    setMusicCover(cover)
+    setAudioCover(cover)
 
     const thumb = await generateCompressedImage(props, thumbnailOptions)
     setThumbnail(thumb)
@@ -277,23 +259,9 @@ export const Mint = () => {
   }
 
   const handleValidation = () => {
-    if (
-      amount <= 0 ||
-      amount > MAX_EDITIONS ||
-      royalties < MIN_ROYALTIES ||
-      royalties > MAX_ROYALTIES ||
-      !audioFile
-    ) {
-      return true
-    }
-    if (GENERATE_DISPLAY_AND_THUMBNAIL) {
-      if (cover && thumbnail) {
-        return false
-      }
-    } else {
-      return false
-    }
-    return true
+    // display the preview btn once the zip is ready
+    return zipFile ? false :true;
+
   }
 
 
@@ -403,8 +371,8 @@ export const Mint = () => {
           <Container>
             <Padding>
               <Preview
-                mimeType={file.mimeType}
-                uri={file.reader}
+                mimeType={zipFile.mimeType}
+                uri={zipFile.reader}
                 title={title}
                 description={description}
                 tags={tags}

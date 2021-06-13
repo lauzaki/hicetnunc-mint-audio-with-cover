@@ -4,7 +4,6 @@ import { IPFS_DIRECTORY_MIMETYPE } from '../constants'
 
 export async function prepareFilesFromZIP(buffer) {
   // unzip files
-  console.log("prepare from zip")
   let files = await unzipBuffer(buffer)
 
   // save raw index file
@@ -37,7 +36,6 @@ export async function prepareFilesFromZIP(buffer) {
 }
 
 export async function unzipBuffer(buffer) {
-  console.log(buffer)
   let entries = fflate.unzipSync(buffer)
   entries = Object.entries(entries).map((entry) => {
     return {
